@@ -1,23 +1,57 @@
-import logo from './logo.svg';
-import './App.css';
-
+import { useState } from "react";
+import { useQuery } from "react-query";
+import spinner from "./assets/spinner.svg";
+import CapsuleCard from "./components/CapsuleCard";
+import CapsuleFilter from "./components/CapsuleFilter";
+import queryString from "query-string";
+import Pagination from "./components/common/Pagination";
 function App() {
+  const initFilters = {
+    limit: 10,
+    offset: 0,
+    type: "",
+    status: "",
+    original_launch_unix: "",
+  };
+  const getCapsules = async () => {
+    let tempFilters = {
+      ...filters,
+      original_launch_unix: filters.original_launch_unix
+        ? Math.floor(new Date(filters.original_launch_unix).getTime() / 1000)
+        : "",
+    };
+
+    const qs = queryString.stringify(
+      { ...tempFilters },
+      { skipEmptyString: true }
+    );
+
+    const result = await fetch(`https://api.spacexdata.com/v3/capsules?${qs}`);
+    return result.json();
+  };
+
+  const { data, isLoading } = useQuery("capsules", getCapsules);
+
+  const [filters, setFilters] = useState({ ...initFilters });
+
+  const handleOnChange = (ev) => {
+    setFilters({ ...filters, [ev.target.name]: ev.target.value });
+  };
+
   return (
     <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+      <CapsuleFilter filters={filters} handleOnChange={handleOnChange} />
+      {isLoading ? (
+        <img src={spinner} className="App-logo" alt="logo" />
+      ) : (
+        <div>
+          {data.map((cap, index) => {
+            return <CapsuleCard data={cap} key={index} />;
+          })}
+
+          <Pagination filters={filters} setFilters={setFilters} />
+        </div>
+      )}
     </div>
   );
 }
